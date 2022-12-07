@@ -12,7 +12,8 @@ data_root = '../data/coco/'
 dataset_type = 'PPYOLOECocoDataset'
 
 use_ceph = False
-# load_from = 'CSPResNetb_s_pretrained1.pth'
+# TODO: 预训练模型要搞
+load_from = 'ppyoloe_plus_s_pretrained.pth'
 # load_from = '/mnt/lustre/share_data/huanghaian/CSPResNetb_s_pretrained1.pth'
 detect_mode = False
 train_batch_size_pre_gpu = 8
@@ -67,7 +68,8 @@ model = dict(
         return_idx=[1, 2, 3],
         use_large_stem=True,
         width_mult=model_width,
-        depth_mult=model_depth
+        depth_mult=model_depth,
+        use_alpha=True
     ),
     neck=dict(
         type='PPYOLOECustomCSPPAN',
@@ -98,7 +100,8 @@ test_pipeline = [
     # # dict(type='LoadAnnotations', with_bbox=True),
     dict(type='PPYOLOEResize', target_size=img_scale, keep_ratio=False, interp=2),
     # ppyoloe中resize方式不维持ratio，所以单独用一个类做预处理，并且在这里转了RGB
-    dict(type='PPYOLOENormalizeImage', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], is_scale=True),
+    dict(type='PPYOLOENormalizeImage', mean=[0., 0., 0.], std=[1., 1., 1.],
+         is_scale=True, norm_type=None),
     dict(
         type='mmdet.PackDetInputs',
         meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape',
@@ -110,7 +113,7 @@ train_dataloader = dict(
     num_workers=train_num_workers,
     persistent_workers=True if train_num_workers != 0 else False,
     sampler=dict(type='DefaultSampler', shuffle=True),
-    collate_fn=dict(type='PPYOLOE_collate_class'),
+    collate_fn=dict(type='PPYOLOE_collate_class_plus'),
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
@@ -144,12 +147,12 @@ test_dataloader = val_dataloader
 optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
-        type='SGD', lr=0.04, momentum=0.9, weight_decay=5e-4,
+        type='SGD', lr=0.001, momentum=0.9, weight_decay=5e-4,
         nesterov=False),
     paramwise_cfg=dict(norm_decay_mult=0.,))
 
 default_hooks = dict(
-    param_scheduler=dict(type='PPYOLOELrUpdaterHook', total_epochs=360),
+    param_scheduler=dict(type='PPYOLOELrUpdaterHook', total_epochs=int(80*1.2)),
     checkpoint=dict(
         type='CheckpointHook', interval=save_epoch_interval, max_keep_ckpts=2))
 
@@ -170,7 +173,7 @@ custom_hooks = [
         momentum=0.0002,
         priority=49),
     dict(
-        type='PPYOLOEAssignerHook', start_tal_epoch=100
+        type='PPYOLOEAssignerHook', start_tal_epoch=30
     )
 ]
 val_evaluator = dict(

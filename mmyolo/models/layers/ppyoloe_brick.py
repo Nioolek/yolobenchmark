@@ -59,7 +59,7 @@ def get_activation(name="silu", inplace=True):
 
 
 class RepVggBlock(nn.Module):
-    def __init__(self, ch_in, ch_out, act='relu', deploy=False):
+    def __init__(self, ch_in, ch_out, act='relu', alpha=False, deploy=False):
         super(RepVggBlock, self).__init__()
         self.ch_in = ch_in
         self.ch_out = ch_out
@@ -81,11 +81,22 @@ class RepVggBlock(nn.Module):
         self.act = get_activation(act) if act is None or isinstance(act, (
             str, dict)) else act
 
+        if alpha:
+            alpha = torch.ones([
+                1,
+            ], dtype=torch.float32, requires_grad=True)
+            self.alpha = nn.Parameter(alpha, requires_grad=True)
+        else:
+            self.alpha = None
+
     def forward(self, x):
         if self.deploy:
             y = self.conv(x)
         else:
-            y = self.conv1(x) + self.conv2(x)
+            if self.alpha:
+                y = self.conv1(x) + self.alpha * self.conv2(x)
+            else:
+                y = self.conv1(x) + self.conv2(x)
 
         y = self.act(y)
         return y

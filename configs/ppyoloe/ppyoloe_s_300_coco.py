@@ -12,10 +12,10 @@ data_root = '../data/coco/'
 dataset_type = 'PPYOLOECocoDataset'
 
 use_ceph = False
-load_from = 'CSPResNetb_s_pretrained1.pth'
+# load_from = 'CSPResNetb_s_pretrained1.pth'
 # load_from = '/mnt/lustre/share_data/huanghaian/CSPResNetb_s_pretrained1.pth'
 detect_mode = False
-train_batch_size_pre_gpu = 32
+train_batch_size_pre_gpu = 8
 train_num_workers = 8
 val_batch_size_pre_gpu = 1
 val_num_workers = 2

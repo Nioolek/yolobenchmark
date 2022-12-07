@@ -16,7 +16,8 @@ class CSPResStage(nn.Module):
                  n,
                  stride,
                  act='relu',
-                 attn='eca'):
+                 attn='eca',
+                 use_alpha=False):
         super(CSPResStage, self).__init__()
         ch_mid = (ch_in + ch_out) // 2
         if stride == 2:
@@ -27,7 +28,7 @@ class CSPResStage(nn.Module):
         self.conv2 = ConvBNLayer(ch_mid, ch_mid // 2, 1, act=act)
         self.blocks = nn.Sequential(*[
             block_fn(
-                ch_mid // 2, ch_mid // 2, act=act, shortcut=True)
+                ch_mid // 2, ch_mid // 2, act=act, shortcut=True, use_alpha=use_alpha)
             for i in range(n)
         ])
         if attn:
@@ -50,11 +51,11 @@ class CSPResStage(nn.Module):
 
 
 class BasicBlock(nn.Module):
-    def __init__(self, ch_in, ch_out, act='relu', shortcut=True):
+    def __init__(self, ch_in, ch_out, act='relu', shortcut=True, use_alpha=False):
         super(BasicBlock, self).__init__()
         assert ch_in == ch_out
         self.conv1 = ConvBNLayer(ch_in, ch_out, 3, stride=1, padding=1, act=act)
-        self.conv2 = RepVggBlock(ch_out, ch_out, act=act)
+        self.conv2 = RepVggBlock(ch_out, ch_out, act=act, alpha=use_alpha)
         self.shortcut = shortcut
 
     def forward(self, x):
@@ -76,7 +77,8 @@ class PPYOLOEBackbone(nn.Module):
                  return_idx=[0, 1, 2, 3, 4],
                  use_large_stem=False,
                  width_mult=1.0,
-                 depth_mult=1.0):
+                 depth_mult=1.0,
+                 use_alpha=False):
         super().__init__()
         channels = [max(round(c * width_mult), 1) for c in channels]
         layers = [max(round(l * depth_mult), 1) for l in layers]
@@ -94,7 +96,9 @@ class PPYOLOEBackbone(nn.Module):
             )
         n = len(channels) - 1
         self.stages = nn.Sequential(
-            *[CSPResStage(BasicBlock, channels[i], channels[i + 1], layers[i], 2, act=act) for i in range(n)]
+            *[CSPResStage(BasicBlock, channels[i],
+                          channels[i + 1], layers[i],
+                          2, act=act, use_alpha=use_alpha) for i in range(n)]
         )
         self._out_channels = channels[1:]
         self._out_strides = [4, 8, 16, 32]

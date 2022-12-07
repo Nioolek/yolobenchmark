@@ -217,7 +217,7 @@ class BatchRandomResize(BaseOperator):
 
 class NormalizeImage(BaseOperator):
     def __init__(self, mean=[0.485, 0.456, 0.406], std=[1, 1, 1],
-                 is_scale=True):
+                 is_scale=True, norm_type='mean_std'):
         """
         Args:
             mean (list): the pixel mean
@@ -227,6 +227,7 @@ class NormalizeImage(BaseOperator):
         self.mean = mean
         self.std = std
         self.is_scale = is_scale
+        self.norm_type= norm_type
         if not (isinstance(self.mean, list) and isinstance(self.std, list) and
                 isinstance(self.is_scale, bool)):
             raise TypeError("{}: input type is invalid.".format(self))
@@ -242,14 +243,17 @@ class NormalizeImage(BaseOperator):
         """
         im = sample['img']
         im = im.astype(np.float32, copy=False)
-        mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
-        std = np.array(self.std)[np.newaxis, np.newaxis, :]
+        # mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
+        # std = np.array(self.std)[np.newaxis, np.newaxis, :]
 
         if self.is_scale:
             im = im / 255.0
 
-        im -= mean
-        im /= std
+        if self.norm_type == 'mean_std':
+            mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
+            std = np.array(self.std)[np.newaxis, np.newaxis, :]
+            im -= mean
+            im /= std
 
         sample['img'] = im
         return sample
@@ -299,6 +303,38 @@ class PPYOLOE_collate_class():
             labels_list.append(torch.from_numpy(labels))
         return {'inputs': torch.stack(imgs, 0), 'data_sample': torch.stack(labels_list, 0)}
 
+
+class PPYOLOE_collate_class_plus():
+
+    def __init__(self):
+        self.pipeline_list = [
+            BatchRandomResize(target_size=[320, 352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768],
+                              random_size=True, random_interp=True, keep_ratio=False),
+            NormalizeImage(mean=[0., 0., 0.], std=[1., 1., 1.], is_scale=True, norm_type=None),
+            Permute()
+        ]
+
+    def __call__(self, batch):
+        for pipe in self.pipeline_list:
+            batch = pipe(batch)
+
+        num_max_boxes = max([len(s['gt_bbox']) for s in batch])
+        imgs = []
+        labels_list = []
+        for ind, i in enumerate(batch):
+            img = i['img']
+            img = np.ascontiguousarray(img)
+
+            pad_gt_class = np.zeros((num_max_boxes, 1), dtype=np.float32)
+            pad_gt_bbox = np.zeros((num_max_boxes, 4), dtype=np.float32)
+            num_gt = len(i['gt_bbox'])
+            if num_gt > 0:
+                pad_gt_class[:num_gt] = i['gt_class'][:, None]
+                pad_gt_bbox[:num_gt] = i['gt_bbox']
+            labels = np.concatenate((pad_gt_class, pad_gt_bbox), axis=1)
+            imgs.append(torch.from_numpy(img))
+            labels_list.append(torch.from_numpy(labels))
+        return {'inputs': torch.stack(imgs, 0), 'data_sample': torch.stack(labels_list, 0)}
 
 @RUNNERS.register_module()
 class YoloCustomRunner(Runner):
@@ -367,6 +403,8 @@ class YoloCustomRunner(Runner):
         collate_fn_cfg = dataloader_cfg.pop('collate_fn', None)
         if collate_fn_cfg and collate_fn_cfg['type'] == 'PPYOLOE_collate_class':
             collate_fn = PPYOLOE_collate_class()
+        elif collate_fn_cfg and collate_fn_cfg['type'] == 'PPYOLOE_collate_class_plus':
+            collate_fn = PPYOLOE_collate_class_plus()
         else:
             collate_fn = yolov5_collate_fn
 

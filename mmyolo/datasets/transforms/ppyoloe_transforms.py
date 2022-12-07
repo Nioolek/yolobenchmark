@@ -124,23 +124,26 @@ class PPYOLOEResize(BaseTransform):
 class PPYOLOENormalizeImage(BaseTransform):
     def __init__(self,
                  mean=[0.485, 0.456, 0.406], std=[1, 1, 1],
-                 is_scale=True):
+                 is_scale=True, norm_type='mean_std'):
         self.mean = mean
         self.std = std
         self.is_scale = is_scale
+        self.norm_type = norm_type
 
     def transform(self, results):
         im = results['img']
         im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)    # RGB
         im = im.astype(np.float32, copy=False)
-        mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
-        std = np.array(self.std)[np.newaxis, np.newaxis, :]
 
         if self.is_scale:
-            im = im / 255.0
+            scale = 1.0 / 255.0
+            im *= scale
 
-        im -= mean
-        im /= std
+        if self.norm_type == 'mean_std':
+            mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
+            std = np.array(self.std)[np.newaxis, np.newaxis, :]
+            im -= mean
+            im /= std
 
         results['img'] = im
         results['pad_param'] = np.array([0, 0, 0, 0],

@@ -12,7 +12,6 @@ data_root = '../data/coco/'
 dataset_type = 'PPYOLOECocoDataset'
 
 use_ceph = False
-# TODO: 预训练模型要搞
 load_from = 'ppyoloe_plus_s_pretrained.pth'
 # load_from = '/mnt/lustre/share_data/huanghaian/CSPResNetb_s_pretrained1.pth'
 detect_mode = False

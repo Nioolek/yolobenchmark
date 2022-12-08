@@ -12,7 +12,7 @@ data_root = '../data/coco/'
 dataset_type = 'PPYOLOECocoDataset'
 
 use_ceph = False
-load_from = 'ppyoloe_plus_s_pretrained.pth'
+load_from = 'ppyoloe_crn_s_obj365_pretrained.pth'
 # load_from = '/mnt/lustre/share_data/huanghaian/CSPResNetb_s_pretrained1.pth'
 detect_mode = False
 train_batch_size_pre_gpu = 8

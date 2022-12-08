@@ -12,7 +12,8 @@ data_root = '../data/coco/'
 dataset_type = 'PPYOLOECocoDataset'
 
 use_ceph = False
-load_from = 'ppyoloe_crn_s_obj365_pretrained.pth'
+load_from = 'ppyoloe_crn_s_obj365_pretrained_mmyolo.pth'
+# load_from = 'ppyoloe_crn_s_obj365_pretrained.pth'
 # load_from = '/mnt/lustre/share_data/huanghaian/CSPResNetb_s_pretrained1.pth'
 detect_mode = False
 train_batch_size_pre_gpu = 8
@@ -63,29 +64,54 @@ model = dict(
         # bgr_to_rgb=True
     ),
     backbone=dict(
-        type='PPYOLOEBackbone',
-        return_idx=[1, 2, 3],
-        use_large_stem=True,
-        width_mult=model_width,
-        depth_mult=model_depth,
-        use_alpha=True
-    ),
+        type='PPYOLOECSPResNet',
+        deepen_factor=model_depth,
+        widen_factor=model_width,
+        block_cfg=dict(
+            type='PPYOLOEBasicBlock', shortcut=True, use_alpha=True),
+        norm_cfg=dict(type='BN', momentum=0.1, eps=1e-5),
+        act_cfg=dict(type='SiLU', inplace=True),
+        attention_cfg=dict(
+            type='EffectiveSELayer', act_cfg=dict(type='HSigmoid')),
+        use_large_stem=True),
+    # backbone=dict(
+    #     type='PPYOLOEBackbone',
+    #     return_idx=[1, 2, 3],
+    #     use_large_stem=True,
+    #     width_mult=model_width,
+    #     depth_mult=model_depth,
+    #     use_alpha=True
+    # ),
     neck=dict(
-        type='PPYOLOECustomCSPPAN',
-        out_channels=[768, 384, 192],
-        stage_num=1,
-        block_num=3,
-        act='swish',
-        spp=True,
-        width_mult=model_width,
-        depth_mult=model_depth
-    ),
+        type='PPYOLOECSPPAFPN',
+        in_channels=[256, 512, 1024],
+        out_channels=[192, 384, 768],
+        deepen_factor=model_depth,
+        widen_factor=model_width,
+        num_csplayer=1,
+        num_blocks_per_layer=3,
+        block_cfg=dict(
+            type='PPYOLOEBasicBlock', shortcut=False, use_alpha=False),
+        norm_cfg=dict(type='BN', momentum=0.1, eps=1e-5),
+        act_cfg=dict(type='SiLU', inplace=True),
+        drop_block_cfg=None,
+        use_spp=True),
+    # neck=dict(
+    #     type='PPYOLOECustomCSPPAN',
+    #     out_channels=[768, 384, 192],
+    #     stage_num=1,
+    #     block_num=3,
+    #     act='swish',
+    #     spp=True,
+    #     width_mult=model_width,
+    #     depth_mult=model_depth
+    # ),
     bbox_head=dict(
         type='PPYOLOEHead',
-        in_channels=[768, 384, 192],
+        in_channels=[192, 384, 768],
         width_mult=model_width,
         num_classes=80,
-        fpn_strides=[32, 16, 8],
+        fpn_strides=[8, 16, 32],
         grid_cell_scale=5.0,
         grid_cell_offset=0.5,
         use_varifocal_loss=True,
@@ -151,7 +177,14 @@ optim_wrapper = dict(
     paramwise_cfg=dict(norm_decay_mult=0.,))
 
 default_hooks = dict(
-    param_scheduler=dict(type='PPYOLOELrUpdaterHook', total_epochs=int(80*1.2)),
+    param_scheduler=dict(
+        type='PPYOLOEParamSchedulerHook',
+        warmup_min_iter=1000,
+        start_factor=0.,
+        warmup_epochs=5,
+        min_lr_ratio=0.0,
+        total_epochs=int(80 * 1.2)),
+    # param_scheduler=dict(type='PPYOLOELrUpdaterHook', total_epochs=int(80*1.2)),
     checkpoint=dict(
         type='CheckpointHook', interval=save_epoch_interval, max_keep_ckpts=2))
 

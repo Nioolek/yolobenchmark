@@ -31,4 +31,10 @@ class PPYOLOEDetDataPreprocessor(DetDataPreprocessor):
             self.device, non_blocking=True).float()
         data_samples = data['data_sample'].to(
             self.device, non_blocking=True)
-        return inputs, data_samples
+
+        img_metas = [{'batch_input_shape': inputs.shape[2:]}] * len(inputs)
+        data_samples = {'bboxes_labels': data_samples, 'img_metas': img_metas}
+
+        return {'inputs': inputs, 'data_samples': data_samples}
+
+        # return inputs, data_samples

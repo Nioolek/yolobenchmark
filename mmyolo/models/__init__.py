@@ -6,4 +6,5 @@ from .detectors import *
 from .layers import *
 from .task_modules import *
 from .utils import *
+from .losses import *
 

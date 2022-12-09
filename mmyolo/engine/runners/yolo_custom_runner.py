@@ -336,6 +336,46 @@ class PPYOLOE_collate_class_plus():
             labels_list.append(torch.from_numpy(labels))
         return {'inputs': torch.stack(imgs, 0), 'data_sample': torch.stack(labels_list, 0)}
 
+class PPYOLOE_collate_class_plus1():
+
+    def __init__(self):
+        self.pipeline_list = [
+            BatchRandomResize(target_size=[320, 352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768],
+                              random_size=True, random_interp=True, keep_ratio=False),
+            NormalizeImage(mean=[0., 0., 0.], std=[1., 1., 1.], is_scale=True, norm_type=None),
+            Permute()
+        ]
+
+    def __call__(self, batch):
+        for pipe in self.pipeline_list:
+            batch = pipe(batch)
+
+        num_max_boxes = max([len(s['gt_bbox']) for s in batch])
+        imgs = []
+        labels_list = []
+        for ind, i in enumerate(batch):
+            img = i['img']
+            img = np.ascontiguousarray(img)
+
+            gt_class = torch.from_numpy(i['gt_class'][:, None]).float()
+            gt_bbox = torch.from_numpy(i['gt_bbox'])
+            batch_idx = gt_class.new_full((len(gt_class), 1), ind)
+            bboxes_labels = torch.cat((batch_idx, gt_class, gt_bbox), dim=1)
+            labels_list.append(bboxes_labels)
+            imgs.append(torch.from_numpy(img))
+
+            #
+            # pad_gt_class = np.zeros((num_max_boxes, 1), dtype=np.float32)
+            # pad_gt_bbox = np.zeros((num_max_boxes, 4), dtype=np.float32)
+            # num_gt = len(i['gt_bbox'])
+            # if num_gt > 0:
+            #     pad_gt_class[:num_gt] = i['gt_class'][:, None]
+            #     pad_gt_bbox[:num_gt] = i['gt_bbox']
+            # labels = np.concatenate((pad_gt_class, pad_gt_bbox), axis=1)
+            # imgs.append(torch.from_numpy(img))
+            # labels_list.append(torch.from_numpy(labels))
+        return {'inputs': torch.stack(imgs, 0), 'data_sample': torch.cat(labels_list, 0)}
+
 @RUNNERS.register_module()
 class YoloCustomRunner(Runner):
     @staticmethod
@@ -405,6 +445,8 @@ class YoloCustomRunner(Runner):
             collate_fn = PPYOLOE_collate_class()
         elif collate_fn_cfg and collate_fn_cfg['type'] == 'PPYOLOE_collate_class_plus':
             collate_fn = PPYOLOE_collate_class_plus()
+        elif collate_fn_cfg and collate_fn_cfg['type'] == 'PPYOLOE_collate_class_plus1':
+            collate_fn = PPYOLOE_collate_class_plus1()
         else:
             collate_fn = yolov5_collate_fn
 

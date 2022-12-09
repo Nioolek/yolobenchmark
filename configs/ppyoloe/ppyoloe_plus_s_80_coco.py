@@ -107,17 +107,72 @@ model = dict(
     #     depth_mult=model_depth
     # ),
     bbox_head=dict(
-        type='PPYOLOEHead',
-        in_channels=[192, 384, 768],
-        width_mult=model_width,
-        num_classes=80,
-        fpn_strides=[8, 16, 32],
-        grid_cell_scale=5.0,
-        grid_cell_offset=0.5,
-        use_varifocal_loss=True,
-    ),
-    test_cfg=model_test_cfg
-
+        type='PPYOLOEHeadmmyolo',
+        head_module=dict(
+            type='PPYOLOEHeadModule',
+            num_classes=80,
+            in_channels=[192, 384, 768],
+            widen_factor=model_width,
+            featmap_strides=[8, 16, 32],
+            reg_max=16,
+            norm_cfg=dict(type='BN', momentum=0.1, eps=1e-5),
+            act_cfg=dict(type='SiLU', inplace=True),
+            num_base_priors=1),
+        prior_generator=dict(
+            type='mmdet.MlvlPointGenerator', offset=0.5, strides=[8, 16, 32]),
+        bbox_coder=dict(type='DistancePointBBoxCoder'),
+        loss_cls=dict(
+            type='mmdet.VarifocalLoss',
+            use_sigmoid=True,
+            alpha=0.75,
+            gamma=2.0,
+            iou_weighted=True,
+            reduction='sum',
+            loss_weight=1.0),
+        loss_bbox=dict(
+            type='IoULoss',
+            iou_mode='giou',
+            bbox_format='xyxy',
+            reduction='mean',
+            loss_weight=2.5,
+            return_iou=False),
+        # Since the average is implemented differently in the official
+        # and mmdet, we're going to divide loss_weight by 4.
+        loss_dfl=dict(
+            type='mmdet.DistributionFocalLoss',
+            reduction='mean',
+            loss_weight=0.5 / 4)),
+    # bbox_head=dict(
+    #     type='PPYOLOEHead',
+    #     in_channels=[192, 384, 768],
+    #     width_mult=model_width,
+    #     num_classes=80,
+    #     fpn_strides=[8, 16, 32],
+    #     grid_cell_scale=5.0,
+    #     grid_cell_offset=0.5,
+    #     use_varifocal_loss=True,
+    # ),
+    # test_cfg=model_test_cfg
+    train_cfg=dict(
+        initial_epoch=30,
+        initial_assigner=dict(
+            type='BatchATSSAssigner',
+            num_classes=80,
+            topk=9,
+            iou_calculator=dict(type='mmdet.BboxOverlaps2D')),
+        assigner=dict(
+            type='BatchTaskAlignedAssigner',
+            num_classes=80,
+            topk=13,
+            alpha=1,
+            beta=6,
+            eps=1e-9)),
+    test_cfg=dict(
+        multi_label=True,
+        nms_pre=1000,
+        score_thr=0.01,
+        nms=dict(type='nms', iou_threshold=0.7),
+        max_per_img=300)
 )
 
 test_pipeline = [
@@ -138,7 +193,7 @@ train_dataloader = dict(
     num_workers=train_num_workers,
     persistent_workers=True if train_num_workers != 0 else False,
     sampler=dict(type='DefaultSampler', shuffle=True),
-    collate_fn=dict(type='PPYOLOE_collate_class_plus'),
+    collate_fn=dict(type='PPYOLOE_collate_class_plus1'),
     dataset=dict(
         type=dataset_type,
         data_root=data_root,

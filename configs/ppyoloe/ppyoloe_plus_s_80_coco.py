@@ -12,7 +12,7 @@ data_root = '../data/coco/'
 dataset_type = 'PPYOLOECocoDataset'
 
 use_ceph = False
-load_from = 'ppyoloe_crn_s_obj365_pretrained_mmyolo.pth'
+load_from = 'ppyoloe_crn_s_obj365_pretrained_stride.pth'
 # load_from = 'ppyoloe_crn_s_obj365_pretrained.pth'
 # load_from = '/mnt/lustre/share_data/huanghaian/CSPResNetb_s_pretrained1.pth'
 detect_mode = False
@@ -58,7 +58,7 @@ else:
 model = dict(
     type='PPYOLOE',
     data_preprocessor=dict(
-        type='PPYOLOEDetDataPreprocessor',
+        type='PPYOLOEDetDataPreprocessormmyolo',
         mean=None,
         std=None,
         # bgr_to_rgb=True

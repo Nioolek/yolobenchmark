@@ -31,6 +31,21 @@ class PPYOLOEDetDataPreprocessor(DetDataPreprocessor):
             self.device, non_blocking=True).float()
         data_samples = data['data_sample'].to(
             self.device, non_blocking=True)
+        return inputs, data_samples
+
+
+@MODELS.register_module()
+class PPYOLOEDetDataPreprocessormmyolo(DetDataPreprocessor):
+    def forward(self,
+                data: dict,
+                training: bool = False) -> Tuple[torch.Tensor, Optional[list]]:
+        if not training:
+            return super().forward(data, training)
+
+        inputs = data['inputs'].to(
+            self.device, non_blocking=True).float()
+        data_samples = data['data_sample'].to(
+            self.device, non_blocking=True)
 
         img_metas = [{'batch_input_shape': inputs.shape[2:]}] * len(inputs)
         data_samples = {'bboxes_labels': data_samples, 'img_metas': img_metas}

@@ -315,6 +315,9 @@ class PPYOLOE_collate_class_plus():
         ]
 
     def __call__(self, batch):
+        # print('!!! save')
+        # torch.save(batch, 'batch_data.pth')
+
         for pipe in self.pipeline_list:
             batch = pipe(batch)
 

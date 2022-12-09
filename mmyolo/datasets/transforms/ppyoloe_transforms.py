@@ -106,12 +106,11 @@ class PPYOLOEResize(BaseTransform):
         if 'scale_factor' in results:
             scale_factor = results['scale_factor']
             results['scale_factor'] = np.asarray(
-                [scale_factor[0] * im_scale_y, scale_factor[1] * im_scale_x,
-                 scale_factor[0] * im_scale_y, scale_factor[1] * im_scale_x],
+                [scale_factor[0] * im_scale_x, scale_factor[1] * im_scale_y],
                 dtype=np.float32)
         else:
             results['scale_factor'] = np.asarray(
-                [im_scale_x, im_scale_y, im_scale_x, im_scale_y], dtype=np.float32)
+                [im_scale_x, im_scale_y], dtype=np.float32)
 
         if 'gt_bboxes' in results:
             results['gt_bbox'] = self.apply_bbox(results['gt_bbox'],

@@ -99,54 +99,31 @@ def convert(src, dst):
             name = convert_repvgg(name)
             name = convert_bn(name)
         elif k.startswith('yolo_head.'):
-            # if ('anchor_points' in k) or ('stride_tensor' in k):
-            #     continue
-            # if 'proj_conv' in k:
-            #     # name = k.replace('yolo_head.proj_conv.',
-            #     #                  'bbox_head.head_module.proj_conv.')
-            #     name = k.replace('yolo_head.proj_conv.',
-            #                      'bbox_head.proj_conv.')
-            # else:
-            #     # for org_key, rep_key in [[
-            #     #         'yolo_head.stem_cls.',
-            #     #         'bbox_head.head_module.cls_stems.'
-            #     # ], ['yolo_head.stem_reg.', 'bbox_head.head_module.reg_stems.'],
-            #     #                          [
-            #     #                              'yolo_head.pred_cls.',
-            #     #                              'bbox_head.head_module.cls_preds.'
-            #     #                          ],
-            #     #                          [
-            #     #                              'yolo_head.pred_reg.',
-            #     #                              'bbox_head.head_module.reg_preds.'
-            #     #                          ]]:
-            #     for org_key, rep_key in [[
-            #             'yolo_head.stem_cls.',
-            #             'bbox_head.cls_stems.'
-            #         ], ['yolo_head.stem_reg.', 'bbox_head.reg_stems.'],
-            #             [
-            #                 'yolo_head.pred_cls.',
-            #                 'bbox_head.cls_preds.'
-            #             ],
-            #             [
-            #                 'yolo_head.pred_reg.',
-            #                 'bbox_head.reg_preds.'
-            #             ]]:
-            #         name = name.replace(org_key, rep_key)
-            #     name = name.split('.')
-            #     # ind = name[3]
-            #     ind = name[2]
-            #     name[3] = str(2 - int(ind))
-            #     name = '.'.join(name)
-            name = k.replace('yolo_head.', 'bbox_head.')
+            if ('anchor_points' in k) or ('stride_tensor' in k):
+                continue
+            if 'proj_conv' in k:
+                name = k.replace('yolo_head.proj_conv.',
+                                 'bbox_head.head_module.proj_conv.')
+            else:
+                for org_key, rep_key in [[
+                        'yolo_head.stem_cls.',
+                        'bbox_head.head_module.cls_stems.'
+                ], ['yolo_head.stem_reg.', 'bbox_head.head_module.reg_stems.'],
+                                         [
+                                             'yolo_head.pred_cls.',
+                                             'bbox_head.head_module.cls_preds.'
+                                         ],
+                                         [
+                                             'yolo_head.pred_reg.',
+                                             'bbox_head.head_module.reg_preds.'
+                                         ]]:
+                    name = name.replace(org_key, rep_key)
+                name = name.split('.')
+                ind = name[3]
+                name[3] = str(2 - int(ind))
+                name = '.'.join(name)
             name = convert_bn(name)
-
-            name = name.split('.')
-            ind = name[2]
-            name[2] = str(2-int(ind))
-            name = '.'.join(name)
-
         else:
-            print('continue', k)
             continue
 
         new_state_dict[name] = torch.from_numpy(v)
